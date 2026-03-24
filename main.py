@@ -34,8 +34,8 @@ except Exception:
 try:
     from ai_player import choose_move
 except Exception:
-    # sis ir pagaidu AI, te jāieliek tas kurs taisa ai
-    def choose_move(state: GameState) -> int:
+    # ja nav ai_player.py, tad AI iet random
+    def choose_move(state: GameState, algorithm: str = "alphabeta", depth: int = 6) -> int:
         return random.choice(legal_moves(state))
 
 
@@ -43,7 +43,7 @@ def generate_start_numbers(k: int = 5, low: int = 40000, high: int = 50000) -> L
     result = set()
     while len(result) < k:
         x = random.randint(low, high)
-        x -= x % 60  
+        x -= x % 60
         if low <= x <= high and x % 60 == 0:
             result.add(x)
     return sorted(result)
@@ -74,8 +74,48 @@ def ask_human_move(state: GameState) -> int:
         return m
 
 
-def main() -> None:
-    print("Spēle: dalīšana ar 3/4/5 (Cilvēks vs AI)\n")
+# lai var atkārtoti izmantot izvēlēs
+def read_choice(text: str, valid: List[str]) -> str:
+    while True:
+        x = input(text).strip()
+        if x in valid:
+            return x
+
+
+# algoritma izvēle priekš AI
+def choose_algorithm() -> str:
+    print("Kuru algoritmu izmantos dators?")
+    print("1 - minimax")
+    print("2 - alphabeta")
+
+    alg = read_choice("Izvēle: ", ["1", "2"])
+    if alg == "1":
+        return "minimax"
+    return "alphabeta"
+
+
+# izvēlas kurš sāks pirmais
+def choose_first_player() -> int:
+    print("Kurš uzsāk spēli?")
+    print("1 - cilvēks")
+    print("2 - dators")
+
+    first = read_choice("Izvēle: ", ["1", "2"])
+    if first == "1":
+        return 0
+    return 1
+
+
+# pēc spēles pajautā vai sākt vēlreiz
+def play_again() -> bool:
+    atbilde = read_choice("Vai sākt jaunu spēli? (j/n): ", ["j", "n"])
+    return atbilde == "j"
+
+
+# viena pilna spēles reize
+def play_game() -> None:
+    algorithm = choose_algorithm()
+    first_player = choose_first_player()
 
     start_nums = generate_start_numbers()
     print("Sākuma skaitļi (izvēlies vienu):")
@@ -90,14 +130,15 @@ def main() -> None:
         else:
             print("Nepareiza izvēle.")
 
-    state = GameState(n=start_nums[choice - 1], score=0, bank=0, turn=0)
+    state = GameState(n=start_nums[choice - 1], score=0, bank=0, turn=first_player)
 
     while not is_terminal(state):
         render(state)
         if state.turn == 0:
             state = apply_move(state, ask_human_move(state))
         else:
-            m = choose_move(state)
+            # te padod izvēlēto algoritmu uz ai_player.py
+            m = choose_move(state, algorithm=algorithm)
             print(f"AI izvēlējās: {m}")
             state = apply_move(state, m)
 
@@ -108,6 +149,16 @@ def main() -> None:
     print(f"Banka:                 {r['bank']}")
     print(f"Gala punkti:           {r['final_score']}")
     print(f"Uzvarētājs:            {r['winner']}")
+
+
+def main() -> None:
+    print("Spēle: dalīšana ar 3/4/5 (Cilvēks vs AI)\n")
+
+    # lai pēc beigām var sākt jaunu spēli
+    while True:
+        play_game()
+        if not play_again():
+            break
 
 
 if __name__ == "__main__":
